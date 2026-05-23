@@ -38,7 +38,7 @@
 
 
 static int w32_cmd_handler (pinentry_t pe);
-static void ok_button_clicked (HWND dlg, pinentry_t pe);
+static int ok_button_clicked (HWND dlg, pinentry_t pe);
 
 
 /* We use global variables for the state, because there should never
@@ -337,13 +337,25 @@ dlg_proc (HWND dlg, UINT msg, WPARAM wparam, LPARAM lparam)
       if (pe->error)
         set_dlg_item_text (dlg, IDC_PINENT_ERR, pe->error);
 
+      if (pe->repeat_passphrase)
+        {
+          set_dlg_item_text (dlg, IDC_PINENT_REPEAT_PROMPT,
+                             pe->repeat_passphrase);
+          set_dlg_item_text (dlg, IDC_PINENT_REPEAT, "");
+        }
+      else
+        {
+          ShowWindow (GetDlgItem (dlg, IDC_PINENT_REPEAT_PROMPT), SW_HIDE);
+          ShowWindow (GetDlgItem (dlg, IDC_PINENT_REPEAT), SW_HIDE);
+        }
+
       if (confirm_mode)
         {
           EnableWindow (GetDlgItem (dlg, IDC_PINENT_TEXT), FALSE);
           SetWindowPos (GetDlgItem (dlg, IDC_PINENT_TEXT), NULL, 0, 0, 0, 0,
                         (SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_HIDEWINDOW));
-
-          /* item = IDOK; */
+          ShowWindow (GetDlgItem (dlg, IDC_PINENT_REPEAT_PROMPT), SW_HIDE);
+          ShowWindow (GetDlgItem (dlg, IDC_PINENT_REPEAT), SW_HIDE);
         }
       /* else */
       /*   item = IDC_PINENT_TEXT; */
@@ -359,10 +371,12 @@ dlg_proc (HWND dlg, UINT msg, WPARAM wparam, LPARAM lparam)
 	{
 	case IDOK:
           if (confirm_mode)
-            confirm_yes = 1;
-          else
-            ok_button_clicked (dlg, pe);
-	  EndDialog (dlg, TRUE);
+            {
+              confirm_yes = 1;
+              EndDialog (dlg, TRUE);
+            }
+          else if (ok_button_clicked (dlg, pe) == 0)
+            EndDialog (dlg, TRUE);
 	  break;
 
 	case IDCANCEL:
@@ -376,10 +390,12 @@ dlg_proc (HWND dlg, UINT msg, WPARAM wparam, LPARAM lparam)
        if (wparam == VK_RETURN)
          {
            if (confirm_mode)
-             confirm_yes = 1;
-           else
-             ok_button_clicked (dlg, pe);
-           EndDialog (dlg, TRUE);
+             {
+               confirm_yes = 1;
+               EndDialog (dlg, TRUE);
+             }
+           else if (ok_button_clicked (dlg, pe) == 0)
+             EndDialog (dlg, TRUE);
          }
        break;
 
@@ -400,7 +416,7 @@ dlg_proc (HWND dlg, UINT msg, WPARAM wparam, LPARAM lparam)
 
 /* The okay button has been clicked or the enter enter key in the text
    field.  */
-static void
+static int
 ok_button_clicked (HWND dlg, pinentry_t pe)
 {
   char *s_utf8;
@@ -411,13 +427,46 @@ ok_button_clicked (HWND dlg, pinentry_t pe)
   pe->locale_err = 1;
   w_buffer = secmem_malloc ((w_buffer_size + 1) * sizeof *w_buffer);
   if (!w_buffer)
-    return;
+    return -1;
 
   nchar = GetDlgItemTextW (dlg, IDC_PINENT_TEXT, w_buffer, w_buffer_size);
   s_utf8 = wchar_to_utf8 (w_buffer, nchar, 1);
   secmem_free (w_buffer);
   if (s_utf8)
     {
+      if (pe->repeat_passphrase)
+        {
+          wchar_t *w_repeat;
+          char *s_repeat;
+
+          w_repeat = secmem_malloc ((w_buffer_size + 1) * sizeof *w_repeat);
+          if (!w_repeat)
+            {
+              secmem_free (s_utf8);
+              return -1;
+            }
+          nchar = GetDlgItemTextW (dlg, IDC_PINENT_REPEAT,
+                                   w_repeat, w_buffer_size);
+          s_repeat = wchar_to_utf8 (w_repeat, nchar, 1);
+          secmem_free (w_repeat);
+          if (!s_repeat || strcmp (s_utf8, s_repeat) != 0)
+            {
+              if (s_repeat)
+                secmem_free (s_repeat);
+              secmem_free (s_utf8);
+              set_dlg_item_text (dlg, IDC_PINENT_ERR,
+                                 pe->repeat_error_string
+                                   ? pe->repeat_error_string
+                                   : "Passphrases do not match.");
+              SetDlgItemTextW (dlg, IDC_PINENT_TEXT, L"");
+              SetDlgItemTextW (dlg, IDC_PINENT_REPEAT, L"");
+              SetFocus (GetDlgItem (dlg, IDC_PINENT_TEXT));
+              return -1;
+            }
+          secmem_free (s_repeat);
+          pe->repeat_okay = 1;
+        }
+
       passphrase_ok = 1;
       pinentry_setbufferlen (pe, strlen (s_utf8) + 1);
       if (pe->pin)
@@ -426,6 +475,7 @@ ok_button_clicked (HWND dlg, pinentry_t pe)
       pe->locale_err = 0;
       pe->result = pe->pin? strlen (pe->pin) : 0;
     }
+  return 0;
 }
 
 

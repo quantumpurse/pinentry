@@ -18,6 +18,9 @@
 #define IDC_PINENT_PROMPT               1002
 #define IDC_PINENT_ICON                 1003
 
+#define IDC_PINENT_REPEAT_PROMPT        1004
+#define IDC_PINENT_REPEAT               1005
+
 #define IDB_ICON_32                     3101
 #define IDB_ICON_48                     3102
 #define IDB_ICON_64                     3103
