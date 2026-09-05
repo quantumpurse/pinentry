@@ -413,7 +413,9 @@ ok_button_clicked (HWND dlg, pinentry_t pe)
   if (!w_buffer)
     return;
 
-  nchar = GetDlgItemTextW (dlg, IDC_PINENT_TEXT, w_buffer, w_buffer_size);
+  /* Capacity includes the NUL: the buffer holds w_buffer_size + 1, so pass
+     that, or a w_buffer_size-length input loses its last character.  */
+  nchar = GetDlgItemTextW (dlg, IDC_PINENT_TEXT, w_buffer, w_buffer_size + 1);
   s_utf8 = wchar_to_utf8 (w_buffer, nchar, 1);
   secmem_free (w_buffer);
   if (s_utf8)
