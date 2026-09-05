@@ -30,11 +30,14 @@ extern "C" {
 #endif
 #endif
 
-/* Longest input a passphrase field accepts, counted in UTF-16 code
-   units on macOS and Windows.  255 is what both frontends silently
-   clipped at before; input above it is now refused with
-   GPG_ERR_TOO_LARGE, so a shortened secret is never handed back.  */
-#define PINENTRY_MAX_PASSPHRASE_LENGTH 255
+/* Longest input a passphrase field accepts: 1024 characters, counted as
+   UTF-16 units on macOS and Windows and as Unicode characters on GTK.
+   The macOS and Windows frontends historically stopped at 255, but
+   Quantum Purse enters BIP39 seed phrases of up to 72 words (about 650
+   characters) through the same dialog.  Longer input is refused with
+   GPG_ERR_TOO_LARGE rather than clipped, so a shortened secret is never
+   handed back silently.  */
+#define PINENTRY_MAX_PASSPHRASE_LENGTH 1024
 
 typedef enum {
   PINENTRY_COLOR_NONE, PINENTRY_COLOR_DEFAULT,

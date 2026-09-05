@@ -41,7 +41,8 @@
 			errorDescription:(NSString **)error {
     // No limit at entry: an over-limit paste lands in the field and OK
     // then fails with an explicit error (AppDelegate), the same behaviour
-    // as the Windows frontend, instead of being clipped here without a word.
+    // as the GTK and Windows frontends, instead of being clipped here
+    // without a word.
     return YES;
 }
 
