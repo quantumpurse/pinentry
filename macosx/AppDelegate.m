@@ -259,12 +259,8 @@ static int mac_cmd_handler (pinentry_t pe) {
 			if ([pinentry runModal] == 1) { // The user clicked OK.
 				NSString *pin = pinentry.pin ? pinentry.pin : @"";
 				const char *passphrase = NULL;
-				// pin.length is UTF-16 code units, the unit the shared limit in
-				// pinentry.h is defined in, so macOS and Windows accept the same inputs.
 				// Checked before the UTF-8 conversion so a refused secret is never copied.
 				if (pin.length > PINENTRY_MAX_PASSPHRASE_LENGTH) {
-					// Refuse rather than clip. passphrase stays NULL and returnValue
-					// stays -1, so the core reports specific_err to the client.
 					pe->specific_err = gpg_error(GPG_ERR_TOO_LARGE);
 				} else {
 					passphrase = pin.UTF8String;
